@@ -20,37 +20,36 @@ public class FlightStreamer {
 
     private final ObjectMapper objectMapper;
     private final FirehoseConnector firehoseConnector;
+    private final FlightWebSocketHandler webSocketHandler;
 
-    // Spring Boot automatically injects the FirehoseConnector when it builds this class
-    public FlightStreamer(FirehoseConnector firehoseConnector) {
+    // Spring Boot automatically injects both tools now
+    public FlightStreamer(FirehoseConnector firehoseConnector, FlightWebSocketHandler webSocketHandler) {
         this.firehoseConnector = firehoseConnector;
+        this.webSocketHandler = webSocketHandler;
         this.objectMapper = new ObjectMapper();
     }
 
     public void startStreaming(String airportCode) {
         try {
-            // 1. Get the raw, open tunnel from your Connection Manager
             SSLSocket socket = firehoseConnector.createSecureConnection();
-
-            // 2. Set up the tools to push and pull text through the tunnel
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-            // 3. Send the Handshake Command
             System.out.println("Authenticating and requesting " + airportCode + "...");
             String initCommand = String.format("live username %s password %s events \"position\" airport_filter \"%s\"",
                     username, apikey, airportCode);
             out.println(initCommand);
 
-            // 4. Catch the infinite stream
             String rawJsonLine;
             while ((rawJsonLine = in.readLine()) != null) {
                 try {
-                    // 5. Translate JSON string to clean Java Record
                     FlightPosition flight = objectMapper.readValue(rawJsonLine, FlightPosition.class);
 
                     if (flight.lat() != 0.0 && flight.lon() != 0.0) {
                         System.out.println("Tracking -> " + flight.ident() + " at Lat: " + flight.lat() + ", Lon: " + flight.lon());
+
+                        // Shove the exact same data to any connected Unity games!
+                        webSocketHandler.broadcastFlight(rawJsonLine);
                     }
                 } catch (Exception e) {
                     // Ignore malformed JSON lines
