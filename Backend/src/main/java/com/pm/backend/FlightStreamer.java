@@ -41,15 +41,26 @@ public class FlightStreamer {
             out.println(initCommand);
 
             String rawJsonLine;
+// Define the LAX Bounding Box at the class level or inside the loop
+            double minLat = 32.5;
+            double maxLat = 35.0;
+            double minLon = -120.5;
+            double maxLon = -114.5;
+
             while ((rawJsonLine = in.readLine()) != null) {
                 try {
                     FlightPosition flight = objectMapper.readValue(rawJsonLine, FlightPosition.class);
+                    System.out.println("Waiting for a nearby plane");
+                    // 1. ADD THE BOUNDING BOX FILTER HERE
+                    boolean isAtLAX = flight.lat() >= minLat && flight.lat() <= maxLat &&
+                            flight.lon() >= minLon && flight.lon() <= maxLon;
 
-                    if (flight.lat() != 0.0 && flight.lon() != 0.0) {
-                        System.out.println("Tracking -> " + flight.ident() + " at Lat: " + flight.lat() + ", Lon: " + flight.lon());
+                    // 2. Only broadcast if it is a valid coordinate AND inside the box
+                    if (flight.lat() != 0.0 && flight.lon() != 0.0 && isAtLAX) {
+                        System.out.println("Tracking LAX -> " + flight.ident());
 
-                        // Shove the exact same data to any connected Unity games!
-                        webSocketHandler.broadcastFlight(rawJsonLine);
+                        String cleanJson = objectMapper.writeValueAsString(flight);
+                        webSocketHandler.broadcastFlight(cleanJson);
                     }
                 } catch (Exception e) {
                     // Ignore malformed JSON lines
