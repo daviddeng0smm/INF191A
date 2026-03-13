@@ -1,4 +1,4 @@
-package com.pm.backend;
+package com.pm.backend.config;
 
 import org.springframework.stereotype.Component;
 import javax.net.ssl.SSLSocket;

@@ -1,5 +1,6 @@
 package com.pm.backend;
 
+import com.pm.backend.services.FlightStreamer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -27,7 +28,7 @@ public class BackendApplication implements CommandLineRunner {
             @Override
             public void run() {
                 // This is where we actually turn the streamer on
-                flightStreamer.startStreaming("KLAX");
+                flightStreamer.startLiveStreaming("KLAX");
             }
         };
 

@@ -1,5 +1,10 @@
-package com.pm.backend;
+package com.pm.backend.handler;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pm.backend.services.FlightStreamer;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
@@ -12,6 +17,15 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @Component
 public class FlightWebSocketHandler extends TextWebSocketHandler {
     private final CopyOnWriteArrayList<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
+    private final ObjectMapper objectMapper;
+
+    @Autowired
+    @Lazy
+    private FlightStreamer flightStreamer;
+
+    public FlightWebSocketHandler() {
+        this.objectMapper = new ObjectMapper();
+    }
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) {
@@ -23,6 +37,29 @@ public class FlightWebSocketHandler extends TextWebSocketHandler {
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) {
         sessions.remove(session);
         System.out.println("Unity Game Engine Disconnected!");
+    }
+
+    // action:START_LIVE, ,
+    @Override
+    protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
+        String payload = message.getPayload();
+        JsonNode json = objectMapper.readTree(payload);
+        String action = json.get("action").asText();
+
+        switch(action){
+            case "START_LIVE":
+                String airportName = json.get("Airport").asText();
+                flightStreamer.startLiveStreaming(airportName);
+                break;
+            case "START_HISTORICAL":
+                String ident = json.get("ident").asText();
+                long start = json.get("startTime").asLong();
+                long end = json.get("endTime").asLong();
+
+                break;
+        }
+
+
     }
 
     public void broadcastFlight(String jsonFlightData) {
