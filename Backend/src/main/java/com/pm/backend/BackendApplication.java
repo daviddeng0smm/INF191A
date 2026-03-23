@@ -5,11 +5,12 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableAsync;
 
 @SpringBootApplication
+@EnableAsync // This turns on the background worker feature
 public class BackendApplication implements CommandLineRunner {
 
-    // 1. @Autowired tells Spring: "Please grab the FlightStreamer we built and put it here."
     @Autowired
     private FlightStreamer flightStreamer;
 
@@ -17,23 +18,14 @@ public class BackendApplication implements CommandLineRunner {
         SpringApplication.run(BackendApplication.class, args);
     }
 
-    // 2. Because we added "implements CommandLineRunner" at the top,
-    // Spring Boot guarantees it will run this exact method right after the server boots up.
     @Override
     public void run(String... args) {
-        System.out.println("Spring Boot is live! Starting the Firehose...");
+        System.out.println("Spring Boot is live! Starting the Firehose via Async...");
 
-        // 3. We define a standard background task
-        Runnable backgroundTask = new Runnable() {
-            @Override
-            public void run() {
-                // This is where we actually turn the streamer on
-                flightStreamer.startLiveStreaming("KLAX");
-            }
-        };
+        // This call now returns INSTANTLY because of @Async.
+        // The main thread doesn't wait for the loop to finish!
+        flightStreamer.startLiveStreaming("KLAX");
 
-        // 4. We hand that task to a new Thread and tell it to start working
-        Thread workerThread = new Thread(backgroundTask);
-        workerThread.start();
+        System.out.println("Main thread is free to handle WebSockets!");
     }
 }

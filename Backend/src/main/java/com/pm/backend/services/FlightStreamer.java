@@ -5,6 +5,7 @@ import com.pm.backend.config.FirehoseConnector;
 import com.pm.backend.handler.FlightWebSocketHandler;
 import com.pm.backend.model.FlightPosition;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import javax.net.ssl.SSLSocket;
@@ -35,14 +36,14 @@ public class FlightStreamer {
         this.webSocketHandler = webSocketHandler;
         this.objectMapper = new ObjectMapper();
     }
-
+    @Async
     public void startLiveStreaming(String airportCode) {
         try {
             SSLSocket socket = firehoseConnector.createSecureConnection();
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
             BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-            System.out.println("Authenticating and requesting live data" + airportCode + "...");
+            System.out.println("Authenticating and requesting live data " + airportCode + "...");
             String initCommand = String.format("live username %s password %s events \"position\" airport_filter \"%s\"",
                     username, apikey, airportCode);
             out.println(initCommand);
@@ -77,13 +78,23 @@ public class FlightStreamer {
             System.err.println("Connection dropped or failed: " + e.getMessage());
         }
     }
-    public void startHistoricalStream(String [] planeIdentifier, String startTime, String endTime) throws IOException {
+
+    @Async
+    public void startHistoricalStream(String [] planeIdentifierList, Long startTime, Long endTime, String airportCode) throws IOException {
         SSLSocket socket = firehoseConnector.createSecureConnection();
         PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
         BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
 
-        try{
+        String planeIdentifiers = String.join(" ", planeIdentifierList);
 
+        try{
+            System.out.println("Authenticating and requesting historical data" +  "planeIdentifiers: " + planeIdentifiers
+                    + "startTime: " + startTime + "endTime: " + endTime);
+            String initCommand = String.format("range %s startTime %s endTime username %s password %s events \"flifo\" airport_filter \"%s\" ",
+                    startTime, endTime, username, apikey,  );
+            out.println(initCommand);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
 
 
