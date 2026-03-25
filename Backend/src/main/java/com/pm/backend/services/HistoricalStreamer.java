@@ -2,9 +2,10 @@ package com.pm.backend.services;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pm.backend.config.FirehoseConnector;
-import com.pm.backend.handler.FlightWebSocketHandler;
-import com.pm.backend.model.FlightPosition;
+
+
 import com.pm.backend.model.HistoricalFlightObject;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -28,20 +29,21 @@ public class HistoricalStreamer {
     @Value("${flightaware.apikey}")
     private String apikey;
 
+
     private final ObjectMapper objectMapper;
     private final FirehoseConnector firehoseConnector;
-    private final FlightWebSocketHandler flightWebSocketHandler;
+
+    private final FlightDataService flightDataService;
 
     // Standard constructor for Spring injection
-    public HistoricalStreamer(FlightWebSocketHandler flightWebSocketHandler,
+    public HistoricalStreamer(FlightDataService flightDataService,
                               FirehoseConnector firehoseConnector,
                               ObjectMapper objectMapper) {
-        this.flightWebSocketHandler = flightWebSocketHandler;
+        this.flightDataService = flightDataService;
         this.firehoseConnector = firehoseConnector;
         this.objectMapper = objectMapper;
     }
 
-    String content = "Hello, world! This is a simple text file.";
     String filepath = "C:\\Users\\David\\Desktop\\INF191A\\Backend\\src\\output.txt";
 
     @Async
@@ -69,11 +71,16 @@ public class HistoricalStreamer {
             // 4. The main data loop
             while ((rawJsonLine = in.readLine()) != null) {
                 try {
+
+                    HistoricalFlightObject flight = objectMapper.readValue(rawJsonLine, HistoricalFlightObject.class);
+                    if (flight != null && flight.ident() != null) {
+                        flightDataService.addFlightData(flight); // add to the service's internal map for replay
+                    }
+
+                    //print to txt file for testing
                     Object json = objectMapper.readValue(rawJsonLine, Object.class);
                     String prettyJson = objectMapper.writerWithDefaultPrettyPrinter()
                             .writeValueAsString(json);
-
-                    // FIX: Wrap 'filepath' in Paths.get()
                     Files.writeString(Paths.get(filepath), prettyJson + System.lineSeparator(),
                             StandardOpenOption.CREATE,
                             StandardOpenOption.APPEND);

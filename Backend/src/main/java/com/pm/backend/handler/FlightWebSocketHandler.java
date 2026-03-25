@@ -2,8 +2,12 @@ package com.pm.backend.handler;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pm.backend.model.HistoricalFlightObject;
+import com.pm.backend.services.FlightDataService;
+import com.pm.backend.services.HistoricalStreamer;
 import com.pm.backend.services.LiveStreamer;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
@@ -19,12 +23,21 @@ public class FlightWebSocketHandler extends TextWebSocketHandler {
     private final CopyOnWriteArrayList<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
     private final ObjectMapper objectMapper;
 
+
+    @Autowired
+    @Lazy
+    private HistoricalStreamer historicalStreamer;
+
     @Autowired
     @Lazy
     private LiveStreamer liveStreamer;
 
-    public FlightWebSocketHandler() {
-        this.objectMapper = new ObjectMapper();
+    @Autowired
+    @Lazy
+    private FlightDataService flightDataService;
+
+    public FlightWebSocketHandler(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
     }
 
     @Override
@@ -56,6 +69,9 @@ public class FlightWebSocketHandler extends TextWebSocketHandler {
                 long start = json.get("startTime").asLong();
                 long end = json.get("endTime").asLong();
 
+
+                historicalStreamer.StartHistoricalStreamer(ident.split(" "), start, end);
+                flightDataService.setPaused(false);
                 break;
         }
 
