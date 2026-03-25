@@ -2,7 +2,7 @@ package com.pm.backend.handler;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.pm.backend.services.FlightStreamer;
+import com.pm.backend.services.LiveStreamer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
@@ -21,7 +21,7 @@ public class FlightWebSocketHandler extends TextWebSocketHandler {
 
     @Autowired
     @Lazy
-    private FlightStreamer flightStreamer;
+    private LiveStreamer liveStreamer;
 
     public FlightWebSocketHandler() {
         this.objectMapper = new ObjectMapper();
@@ -49,7 +49,7 @@ public class FlightWebSocketHandler extends TextWebSocketHandler {
         switch(action){
             case "START_LIVE":
                 String airportName = json.get("Airport").asText();
-                flightStreamer.startLiveStreaming(airportName);
+                liveStreamer.startLiveStreaming(airportName);
                 break;
             case "START_HISTORICAL":
                 String ident = json.get("ident").asText();

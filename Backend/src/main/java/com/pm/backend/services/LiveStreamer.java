@@ -17,7 +17,7 @@ import java.util.TreeMap;
 
 
 @Service
-public class FlightStreamer {
+public class LiveStreamer {
 
     @Value("${flightaware.username}")
     private String username;
@@ -31,7 +31,7 @@ public class FlightStreamer {
     public static TreeMap<Integer, FlightPosition[] >a;
 
     // Spring Boot automatically injects both tools now
-    public FlightStreamer(FirehoseConnector firehoseConnector, FlightWebSocketHandler webSocketHandler) {
+    public LiveStreamer(FirehoseConnector firehoseConnector, FlightWebSocketHandler webSocketHandler) {
         this.firehoseConnector = firehoseConnector;
         this.webSocketHandler = webSocketHandler;
         this.objectMapper = new ObjectMapper();
@@ -78,27 +78,5 @@ public class FlightStreamer {
             System.err.println("Connection dropped or failed: " + e.getMessage());
         }
     }
-
-    @Async
-    public void startHistoricalStream(String [] planeIdentifierList, Long startTime, Long endTime, String airportCode) throws IOException {
-        SSLSocket socket = firehoseConnector.createSecureConnection();
-        PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
-        BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-
-        String planeIdentifiers = String.join(" ", planeIdentifierList);
-
-        try{
-            System.out.println("Authenticating and requesting historical data" +  "planeIdentifiers: " + planeIdentifiers
-                    + "startTime: " + startTime + "endTime: " + endTime);
-            String initCommand = String.format("range %s startTime %s endTime username %s password %s events \"flifo\" airport_filter \"%s\" ",
-                    startTime, endTime, username, apikey,  );
-            out.println(initCommand);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-
-
-    }
-
 
 }
