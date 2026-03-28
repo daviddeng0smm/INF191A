@@ -1,4 +1,4 @@
-package com.pm.backend;
+package com.pm.backend.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 

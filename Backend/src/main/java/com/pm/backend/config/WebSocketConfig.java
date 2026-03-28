@@ -1,5 +1,6 @@
-package com.pm.backend;
+package com.pm.backend.config;
 
+import com.pm.backend.handler.FlightWebSocketHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.annotation.EnableWebSocket;
@@ -15,7 +16,6 @@ public class WebSocketConfig implements WebSocketConfigurer {
 
     @Override
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
-        registry.addHandler(flightWebSocketHandler, "/flights")
-                .setAllowedOrigins("*");
+        registry.addHandler(flightWebSocketHandler, "/flights").setAllowedOrigins("*");
     }
 }

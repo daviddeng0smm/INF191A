@@ -1,3 +1,3 @@
 # Rename this file to application.properties and add your real keys!
-flightaware.username=YOUR_USERNAME_HERE
-flightaware.apikey=YOUR_API_KEY_HERE
+flightaware.username=ExampleUsername
+flightaware.apikey=ExampleApiKey
