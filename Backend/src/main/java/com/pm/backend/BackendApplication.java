@@ -37,8 +37,8 @@ public class BackendApplication implements CommandLineRunner {
 
         // This call now returns INSTANTLY because of @Async.
         // The main thread doesn't wait for the loop to finish!
-        historicalStreamer.StartHistoricalStreamer(new String[]{"DAL371", "AAL125"}, 1774270800, 1774272600);
-
+//        historicalStreamer.StartHistoricalStreamer(new String[]{"DAL371", "AAL125"}, 1774270800, 1774272600);
+        liveStreamer.startLiveStreaming("KLAX");
         System.out.println("Main thread is free to handle WebSockets!");
     }
 }
