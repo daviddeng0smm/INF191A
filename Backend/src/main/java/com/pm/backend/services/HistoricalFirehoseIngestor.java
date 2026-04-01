@@ -5,7 +5,6 @@ import com.pm.backend.config.FirehoseConnector;
 
 
 import com.pm.backend.model.HistoricalFlightObject;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
@@ -15,14 +14,13 @@ import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 
-import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.concurrent.CompletableFuture;
 
 @Service
-public class HistoricalStreamer {
+public class HistoricalFirehoseIngestor {
     @Value("${flightaware.username}")
     private String username;
 
@@ -33,13 +31,13 @@ public class HistoricalStreamer {
     private final ObjectMapper objectMapper;
     private final FirehoseConnector firehoseConnector;
 
-    private final FlightDataService flightDataService;
+    private final PlaybackManager playbackManager;
 
     // Standard constructor for Spring injection
-    public HistoricalStreamer(FlightDataService flightDataService,
-                              FirehoseConnector firehoseConnector,
-                              ObjectMapper objectMapper) {
-        this.flightDataService = flightDataService;
+    public HistoricalFirehoseIngestor(PlaybackManager playbackManager,
+                                      FirehoseConnector firehoseConnector,
+                                      ObjectMapper objectMapper) {
+        this.playbackManager = playbackManager;
         this.firehoseConnector = firehoseConnector;
         this.objectMapper = objectMapper;
     }
@@ -47,7 +45,7 @@ public class HistoricalStreamer {
     String filepath = "C:\\Users\\David\\Desktop\\INF191A\\Backend\\src\\output.txt";
 
     @Async
-    public void StartHistoricalStreamer(String[] airplaneIdentifiers, long epochStartTime, long epochEndTime) {
+    public CompletableFuture<Boolean> StartHistoricalStreamer(String[] airplaneIdentifiers, long epochStartTime, long epochEndTime) {
         try {
             // 1. Establish the secure tunnel
             SSLSocket socket = firehoseConnector.createSecureConnection();
@@ -71,14 +69,14 @@ public class HistoricalStreamer {
             // 4. The main data loop
             while ((rawJsonLine = in.readLine()) != null) {
                 try {
-
+                    // add to the service's internal map for replay
                     HistoricalFlightObject flight = objectMapper.readValue(rawJsonLine, HistoricalFlightObject.class);
                     if (flight != null && flight.ident() != null) {
-                        flightDataService.addFlightData(flight); // add to the service's internal map for replay
+                        playbackManager.addFlightData(flight);
                     }
 
                     //print to txt file for testing
-                    Object json = objectMapper.readValue(rawJsonLine, Object.class);
+                    Object json = objectMapper.readValue(rawJsonLine, HistoricalFlightObject.class);
                     String prettyJson = objectMapper.writerWithDefaultPrettyPrinter()
                             .writeValueAsString(json);
                     Files.writeString(Paths.get(filepath), prettyJson + System.lineSeparator(),
@@ -86,6 +84,7 @@ public class HistoricalStreamer {
                             StandardOpenOption.APPEND);
 
                     System.out.println("Saved message to file: " + filepath);
+
 
                 } catch (Exception e) {
                     System.out.println("Skipping non-JSON message: " + rawJsonLine);
@@ -99,5 +98,6 @@ public class HistoricalStreamer {
         } catch (Exception e) {
             System.err.println("Connection dropped or failed: " + e.getMessage());
         }
+        return CompletableFuture.completedFuture(true);
     }
 }

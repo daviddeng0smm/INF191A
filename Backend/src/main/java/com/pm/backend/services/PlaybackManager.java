@@ -3,15 +3,16 @@ package com.pm.backend.services;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pm.backend.handler.FlightWebSocketHandler;
 import com.pm.backend.model.HistoricalFlightObject;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.TreeMap;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 @Service
-public class FlightDataService {
+public class PlaybackManager {
 
     private final TreeMap<Long, List<HistoricalFlightObject>> flightMap = new TreeMap<>();
     private final FlightWebSocketHandler webSocketHandler;
@@ -20,14 +21,13 @@ public class FlightDataService {
     private long currentPlaybackTime = 0;
     private boolean isPaused = true;
 
-    public FlightDataService(FlightWebSocketHandler webSocketHandler, ObjectMapper objectMapper) {
+    public PlaybackManager(FlightWebSocketHandler webSocketHandler, ObjectMapper objectMapper) {
         this.webSocketHandler = webSocketHandler;
         this.objectMapper = objectMapper;
     }
 
     public void addFlightData(HistoricalFlightObject flight) {
-        flightMap.computeIfAbsent(flight.clock(), k -> new ArrayList<>()).add(flight);
-        // Automatically set the start time to the first piece of data received
+        flightMap.computeIfAbsent(flight.clock(), k -> new CopyOnWriteArrayList<>()).add(flight);        // Automatically set the start time to the first piece of data received
         if (currentPlaybackTime == 0 || flight.clock() < currentPlaybackTime) {
             currentPlaybackTime = flight.clock();
         }
@@ -38,6 +38,7 @@ public class FlightDataService {
     }
 
     // This method is called by a timer or a loop to advance the replay
+    @Scheduled(fixedRate = 1000)
     public void tick() {
         if (isPaused || flightMap.isEmpty()) return;
 

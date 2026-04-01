@@ -2,12 +2,10 @@ package com.pm.backend.handler;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.pm.backend.model.HistoricalFlightObject;
-import com.pm.backend.services.FlightDataService;
-import com.pm.backend.services.HistoricalStreamer;
+import com.pm.backend.services.PlaybackManager;
+import com.pm.backend.services.HistoricalFirehoseIngestor;
 import com.pm.backend.services.LiveStreamer;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
@@ -26,7 +24,7 @@ public class FlightWebSocketHandler extends TextWebSocketHandler {
 
     @Autowired
     @Lazy
-    private HistoricalStreamer historicalStreamer;
+    private HistoricalFirehoseIngestor historicalFirehoseIngestor;
 
     @Autowired
     @Lazy
@@ -34,7 +32,7 @@ public class FlightWebSocketHandler extends TextWebSocketHandler {
 
     @Autowired
     @Lazy
-    private FlightDataService flightDataService;
+    private PlaybackManager flightDataService;
 
     public FlightWebSocketHandler(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
@@ -70,8 +68,8 @@ public class FlightWebSocketHandler extends TextWebSocketHandler {
                 long end = json.get("endTime").asLong();
 
 
-                historicalStreamer.StartHistoricalStreamer(ident.split(" "), start, end);
-                flightDataService.setPaused(false);
+                historicalFirehoseIngestor.StartHistoricalStreamer(ident.split(" "), start, end)
+                        .thenAccept(success -> flightDataService.setPaused(false));
                 break;
         }
 
