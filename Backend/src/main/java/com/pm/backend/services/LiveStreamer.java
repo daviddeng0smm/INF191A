@@ -26,6 +26,7 @@ public class LiveStreamer {
     private final ObjectMapper objectMapper;
     private final FirehoseConnector firehoseConnector;
     private final FlightWebSocketHandler webSocketHandler;
+    private boolean isRunning = false;
 
 
     public LiveStreamer(FirehoseConnector firehoseConnector,
@@ -36,8 +37,11 @@ public class LiveStreamer {
         this.objectMapper = objectMapper;
     }
 
+    public void stop() { this.isRunning = false; }
+
     @Async
     public void startLiveStreaming(String airportCode) {
+        this.isRunning = true;
         try {
             SSLSocket socket = firehoseConnector.createSecureConnection();
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
@@ -55,7 +59,7 @@ public class LiveStreamer {
             double minLon = -120.5;
             double maxLon = -114.5;
 
-            while ((rawJsonLine = in.readLine()) != null) {
+            while (isRunning && (rawJsonLine = in.readLine()) != null){
                 try {
                     FlightPosition flight = objectMapper.readValue(rawJsonLine, FlightPosition.class);
                     System.out.println("Waiting for a nearby plane");

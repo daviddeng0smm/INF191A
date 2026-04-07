@@ -17,6 +17,9 @@ import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.TreeMap;
 import java.util.concurrent.CompletableFuture;
 
 @Service
@@ -69,21 +72,20 @@ public class HistoricalFirehoseIngestor {
             // 4. The main data loop
             while ((rawJsonLine = in.readLine()) != null) {
                 try {
-                    // add to the service's internal map for replay
                     HistoricalFlightObject flight = objectMapper.readValue(rawJsonLine, HistoricalFlightObject.class);
                     if (flight != null && flight.ident() != null) {
                         playbackManager.addFlightData(flight);
                     }
 
                     //print to txt file for testing
-                    Object json = objectMapper.readValue(rawJsonLine, HistoricalFlightObject.class);
-                    String prettyJson = objectMapper.writerWithDefaultPrettyPrinter()
-                            .writeValueAsString(json);
-                    Files.writeString(Paths.get(filepath), prettyJson + System.lineSeparator(),
-                            StandardOpenOption.CREATE,
-                            StandardOpenOption.APPEND);
+//                    Object json = objectMapper.readValue(rawJsonLine, HistoricalFlightObject.class);
+//                    String prettyJson = objectMapper.writerWithDefaultPrettyPrinter()
+//                            .writeValueAsString(json);
+//                    Files.writeString(Paths.get(filepath), prettyJson + System.lineSeparator(),
+//                            StandardOpenOption.CREATE,
+//                            StandardOpenOption.APPEND);
 
-                    System.out.println("Saved message to file: " + filepath);
+//                    System.out.println("Saved message to file: " + filepath);
 
 
                 } catch (Exception e) {
@@ -100,4 +102,5 @@ public class HistoricalFirehoseIngestor {
         }
         return CompletableFuture.completedFuture(true);
     }
+
 }

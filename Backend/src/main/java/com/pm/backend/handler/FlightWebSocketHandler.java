@@ -2,6 +2,7 @@ package com.pm.backend.handler;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pm.backend.model.HistoricalFlightObject;
 import com.pm.backend.services.PlaybackManager;
 import com.pm.backend.services.HistoricalFirehoseIngestor;
 import com.pm.backend.services.LiveStreamer;
@@ -32,7 +33,7 @@ public class FlightWebSocketHandler extends TextWebSocketHandler {
 
     @Autowired
     @Lazy
-    private PlaybackManager flightDataService;
+    private PlaybackManager playbackManager;
 
     public FlightWebSocketHandler(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
@@ -63,17 +64,19 @@ public class FlightWebSocketHandler extends TextWebSocketHandler {
                 liveStreamer.startLiveStreaming(airportName);
                 break;
             case "START_HISTORICAL":
-                String ident = json.get("ident").asText();
+                liveStreamer.stop();
+                String [] identifiers = json.get("identifiers").asText().split(",");
                 long start = json.get("startTime").asLong();
                 long end = json.get("endTime").asLong();
-
-
-                historicalFirehoseIngestor.StartHistoricalStreamer(ident.split(" "), start, end)
-                        .thenAccept(success -> flightDataService.setPaused(false));
+                playbackManager.clearData();
+                historicalFirehoseIngestor.StartHistoricalStreamer(identifiers, start, end)
+                        .thenAccept(success -> playbackManager.setPaused(false));
+                break;
+            case "SEEK":
+                long targetTime = json.get("targetTime").asLong();
+                playbackManager.jumpToTime(targetTime);
                 break;
         }
-
-
     }
 
     public void broadcastFlight(String jsonFlightData) {
@@ -85,6 +88,15 @@ public class FlightWebSocketHandler extends TextWebSocketHandler {
                     System.err.println("Failed to send flight to Unity: " + e.getMessage());
                 }
             }
+        }
+    }
+    public void broadcastFlight(HistoricalFlightObject flightData) {
+        try {
+            // Convert the object to string and call Version A
+            String json = objectMapper.writeValueAsString(flightData);
+            broadcastFlight(json);
+        } catch (Exception e) {
+            System.err.println("Error serializing historical flight: " + e.getMessage());
         }
     }
 }
