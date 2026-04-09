@@ -27,7 +27,9 @@ public class PlaybackManager {
     }
 
     public void addFlightData(HistoricalFlightObject flight) {
-        flightMap.computeIfAbsent(flight.clock(), k -> new CopyOnWriteArrayList<>()).add(flight);        // Automatically set the start time to the first piece of data received
+        flightMap.computeIfAbsent(flight.clock(), k -> new CopyOnWriteArrayList<>()).add(flight);
+        System.out.println("Added flight data: " + flightMap.get(flight.clock()) + "to key " +  flight.clock() );
+        // Automatically set the start time to the first piece of data received
         if (currentPlaybackTime == 0 || flight.clock() < currentPlaybackTime) {
             currentPlaybackTime = flight.clock();
         }
@@ -42,52 +44,53 @@ public class PlaybackManager {
     public void tick() {
         if (isPaused || flightMap.isEmpty()) return;
 
-        // 1. Find the real data point immediately BEFORE current time
+        // 1. Get the closest recorded time at or before current time
         Long t1 = flightMap.floorKey(currentPlaybackTime);
-        // 2. Find the real data point immediately AFTER current time
+
+        // SAFETY: If current time is exactly a recorded timestamp, broadcast the real data
+        if (t1 != null && t1 == currentPlaybackTime) {
+            for (HistoricalFlightObject realData : flightMap.get(t1)) {
+                webSocketHandler.broadcastFlight(realData); // Keeps type: "position"
+            }
+            currentPlaybackTime++;
+            return;
+        }
+
+        // 2. Otherwise, perform interpolation calculation
         Long t2 = flightMap.higherKey(t1);
-
         if (t1 != null && t2 != null) {
-            // We are "between" two real points. Let's calculate the "Ghost" now!
-            HistoricalFlightObject p1 = flightMap.get(t1).get(0);
-            HistoricalFlightObject p2 = flightMap.get(t2).get(0);
-
             double ratio = (double)(currentPlaybackTime - t1) / (t2 - t1);
 
-            // Calculate the temporary position
-            double lerpLat = p1.lat() + (p2.lat() - p1.lat()) * ratio;
-            double lerpLon = p1.lon() + (p2.lon() - p1.lon()) * ratio;
-            double lerpAlt = p1.alt() + (p2.alt() - p1.alt()) * ratio;
+            for (HistoricalFlightObject p1 : flightMap.get(t1)) {
+                HistoricalFlightObject p2 = findMatchingPlane(p1.ident(), flightMap.get(t2));
 
-            // Create a temporary "Ghost" just for this message
-            HistoricalFlightObject currentFrame = new HistoricalFlightObject(
-                    p1.id(),
-                    p1.ident(),
-                    "interpolated", // type
-                    currentPlaybackTime,
-                    lerpLat,
-                    lerpLon,
-                    lerpAlt,
-                    p1.groundspeed(),
-                    p1.heading(),
-                    p1.orig(),
-                    p1.dest(),
-                    p1.aircrafttype(),
-                    p1.status(),
-                    p1.actual_runway_off(),
-                    p1.actual_runway_on()
-            );
+                if (p2 != null) {
+                    // Calculate interpolated values
+                    double lerpLat = p1.lat() + (p2.lat() - p1.lat()) * ratio;
+                    double lerpLon = p1.lon() + (p2.lon() - p1.lon()) * ratio;
+                    double lerpAlt = p1.alt() + (p2.alt() - p1.alt()) * ratio;
 
-            webSocketHandler.broadcastFlight(currentFrame); // Send it and let it be deleted from memory
+                    HistoricalFlightObject currentFrame = new HistoricalFlightObject(
+                            p1.id(), p1.ident(), "interpolated", currentPlaybackTime,
+                            lerpLat, lerpLon, lerpAlt,
+                            p1.groundspeed(), p1.heading(), p1.orig(), p1.dest(),
+                            p1.aircrafttype(), p1.status(), p1.actual_runway_off(), p1.actual_runway_on()
+                    );
+
+                    webSocketHandler.broadcastFlight(currentFrame);
+                }
+            }
         }
-        else if (t1 != null) {
-            // We are at the very end of the data, just send the last point
-            webSocketHandler.broadcastFlight(flightMap.get(t1).get(0));
-        }
-
         currentPlaybackTime++;
     }
 
+    // Helper to find the same plane in the next data batch
+    private HistoricalFlightObject findMatchingPlane(String ident, List<HistoricalFlightObject> nextPlanes) {
+        return nextPlanes.stream()
+                .filter(p -> p.ident().equals(ident))
+                .findFirst()
+                .orElse(null);
+    }
 
 
     // --- Control Methods ---

@@ -62,15 +62,21 @@ public class HistoricalFirehoseIngestor {
 
             // 3. FIX: Added 'username' to the format parameters so 'apikey' doesn't take its place
             String initCommand = String.format(
-                    "range %d %d username %s password %s events \"position flifo\" idents \"%s\"",
+                    "range %d %d username %s password %s events \"position \" idents \"%s\"",
                     epochStartTime, epochEndTime, username, apikey, filteredList
             );
+            // This will return ANY United or Delta flight in the air during that window
+//            String initCommand = String.format(
+//                    "range %d %d username %s password %s events \"position\" idents \"UAL* DAL*\"",
+//                    epochStartTime, epochEndTime, username, apikey
+//            );
 
             out.println(initCommand); // Send the "Hello" command
 
             String rawJsonLine;
             // 4. The main data loop
             while ((rawJsonLine = in.readLine()) != null) {
+               System.out.println("RECEIVED RAW: " + rawJsonLine);
                 try {
                     HistoricalFlightObject flight = objectMapper.readValue(rawJsonLine, HistoricalFlightObject.class);
                     if (flight != null && flight.ident() != null) {
