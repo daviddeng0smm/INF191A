@@ -98,10 +98,10 @@ public class PlaybackManager {
         this.currentPlaybackTime = targetEpoch;
         System.out.println("Scrubbed to: " + targetEpoch);
 
+        tick();
         // Optional: Trigger one immediate broadcast so Unity updates instantly
         // instead of waiting for the next 1-second tick.
         System.out.println("Seeked to: " + currentPlaybackTime);
-        tick();
     }
     public void seek(int secondsOffset) {
         this.currentPlaybackTime += secondsOffset; // Handles -10 or +10
