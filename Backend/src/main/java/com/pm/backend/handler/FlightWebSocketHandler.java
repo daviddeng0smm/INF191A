@@ -15,6 +15,9 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 @Component
@@ -81,6 +84,7 @@ public class FlightWebSocketHandler extends TextWebSocketHandler {
 
     public void broadcastFlight(String jsonFlightData) {
         for (WebSocketSession session : sessions) {
+            logToFile(jsonFlightData);
             if (session.isOpen()) {
                 try {
                     session.sendMessage(new TextMessage(jsonFlightData));
@@ -97,6 +101,18 @@ public class FlightWebSocketHandler extends TextWebSocketHandler {
             broadcastFlight(json);
         } catch (Exception e) {
             System.err.println("Error serializing historical flight: " + e.getMessage());
+        }
+    }
+
+    private void logToFile(String data) {
+        try {
+            String logPath = "C:\\Users\\David\\Desktop\\INF191A\\Backend\\src\\broadcast_log.txt";
+            Files.writeString(Paths.get(logPath), data + System.lineSeparator(),
+                    StandardOpenOption.CREATE,
+                    StandardOpenOption.APPEND);
+        } catch (IOException e) {
+            // We catch it here so a file error doesn't crash the actual live stream
+            System.err.println("Logging Error: " + e.getMessage());
         }
     }
 }
