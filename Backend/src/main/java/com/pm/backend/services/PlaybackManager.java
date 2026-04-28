@@ -3,10 +3,10 @@ package com.pm.backend.services;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pm.backend.handler.FlightWebSocketHandler;
 import com.pm.backend.model.HistoricalFlightObject;
+import lombok.Getter;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import java.util.NavigableMap;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -14,7 +14,6 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @Service
 public class PlaybackManager {
 
-    private final TreeMap<Long, List<HistoricalFlightObject>> flightMap = new TreeMap<>();
     private final FlightWebSocketHandler webSocketHandler;
     private final ObjectMapper objectMapper;
     private final Map<String, TreeMap<Long, HistoricalFlightObject>> identTimelines = new ConcurrentHashMap<>();
@@ -22,6 +21,7 @@ public class PlaybackManager {
 
     private final Set<String> knownIdents = ConcurrentHashMap.newKeySet();
 
+    @Getter
     private long currentPlaybackTime = 0;
     private boolean isPaused = true;
 
@@ -32,10 +32,6 @@ public class PlaybackManager {
     }
 
     public void addFlightData(HistoricalFlightObject flight) {
-        // Keep existing flightMap for anything else that uses it
-        flightMap.computeIfAbsent(flight.clock(), k -> new CopyOnWriteArrayList<>()).add(flight);
-
-        // Also index by ident for O(log N) per-plane lookups
         identTimelines
                 .computeIfAbsent(flight.ident(), k -> new TreeMap<>())
                 .put(flight.clock(), flight);
@@ -46,13 +42,13 @@ public class PlaybackManager {
     }
 
     public void clearData(){
-        this.flightMap.clear();
+        this.identTimelines.clear();
     }
 
     @Scheduled(fixedRate = 1000)
     public void tick() {
         if (isPaused || identTimelines.isEmpty()) return;
-
+        // streams each plane's position at the current playback time, interpolating if necessary
         for (TreeMap<Long, HistoricalFlightObject> timeline : identTimelines.values()) {
             // Binary search for the bounding points
             Map.Entry<Long, HistoricalFlightObject> p1Entry = timeline.floorEntry(currentPlaybackTime);
@@ -68,84 +64,15 @@ public class PlaybackManager {
                 double ratio = timeGap > 0 ? elapsed / timeGap : 0.0;
 
                 // DON'T serialize to string here. Send the object directly.
-                webSocketHandler.broadcastFlight(interpolate(p1, p2, ratio));
+                HistoricalFlightObject ghost = interpolate(p1, p2, ratio);
+                webSocketHandler.broadcastFlight(ghost);
             } else {
                 webSocketHandler.broadcastFlight(p1);
             }
         }
-
         currentPlaybackTime++;
     }
 
-    /**
-     * Logic-specific function to determine if a plane should be interpolated
-     * or broadcasted as-is.
-     */
-    private void processAndBroadcastFlight(HistoricalFlightObject p1) {
-        Long t2 = findNextTimestampForIdent(p1.ident(), currentPlaybackTime);
-
-        if (t2 != null) {
-            List<HistoricalFlightObject> nextList = flightMap.get(t2);
-            HistoricalFlightObject p2 = findMatchingPlane(nextList, p1.ident());
-
-            if (p2 != null) {
-                double timeGap = (double) (t2 - p1.clock()); // total gap between real points
-                double elapsed = (double) (currentPlaybackTime - p1.clock()); // how far we are into that gap
-                double ratio = elapsed / timeGap; // 0.0 at p1, 1.0 at p2
-
-                HistoricalFlightObject interpolated = interpolate(p1, p2, ratio);
-                webSocketHandler.broadcastFlight(interpolated);
-                return;
-            }
-        }
-
-        webSocketHandler.broadcastFlight(p1);
-    }
-
-    private void broadcastSerialized(HistoricalFlightObject flight) {
-        try {
-            String json = objectMapper.writeValueAsString(flight);
-            webSocketHandler.broadcastFlight(json);
-        } catch (Exception e) {
-            System.err.println("Serialization error: " + e.getMessage());
-        }
-    }
-
-    private Long findNextTimestampForIdent(String ident, long currentTime) {
-        SortedMap<Long, List<HistoricalFlightObject>> futureMap = flightMap.tailMap(currentTime + 1);
-
-        for (Map.Entry<Long, List<HistoricalFlightObject>> entry : futureMap.entrySet()) {
-            for (HistoricalFlightObject flight : entry.getValue()) {
-                if (flight.ident().equals(ident)) {
-                    return entry.getKey();
-                }
-            }
-        }
-        return null;
-    }
-
-    private Set<String> getAllIdents() {
-        Set<String> idents = new HashSet<>();
-        for (List<HistoricalFlightObject> flights : flightMap.values()) {
-            for (HistoricalFlightObject f : flights) {
-                idents.add(f.ident());
-            }
-        }
-        return idents;
-    }
-
-    private HistoricalFlightObject findMostRecentForIdent(String ident, long currentTime) {
-        NavigableMap<Long, List<HistoricalFlightObject>> pastMap =
-                flightMap.headMap(currentTime + 1, true); // inclusive of currentTime
-
-        for (Long key : pastMap.descendingKeySet()) {
-            List<HistoricalFlightObject> flights = pastMap.get(key);
-            for (HistoricalFlightObject f : flights) {
-                if (f.ident().equals(ident)) return f;
-            }
-        }
-        return null;
-    }
 
     private HistoricalFlightObject interpolate(HistoricalFlightObject p1, HistoricalFlightObject p2, double ratio) {
         double newLat = p1.lat() + (p2.lat() - p1.lat()) * ratio;
@@ -171,37 +98,47 @@ public class PlaybackManager {
                 p1.actual_runway_on()    // 15
         );
     }
-    // Helper to find the same plane in the next data batch
-    private HistoricalFlightObject findMatchingPlane(List<HistoricalFlightObject> list, String ident) {
-        if (list == null) return null;
-        for (HistoricalFlightObject flight : list) {
-            if (flight.ident().equals(ident)) {
-                return flight;
+
+
+    // --- Control methods for playback ---
+    //check if time is valid
+    boolean isValidTime(long targetEpochTime) {
+        if (identTimelines.isEmpty()) return false;
+
+        long earliestTime = Long.MAX_VALUE;
+        long latestTime = Long.MIN_VALUE;
+
+        // Calculate the total range across all planes
+        for (TreeMap<Long, HistoricalFlightObject> timeline : identTimelines.values()) {
+            if (!timeline.isEmpty()) {
+                earliestTime = Math.min(earliestTime, timeline.firstKey());
+                latestTime = Math.max(latestTime, timeline.lastKey());
             }
         }
-        return null;
+        return targetEpochTime >= earliestTime && targetEpochTime <= latestTime;
     }
 
-
-    // --- Control Methods ---
+    // jump to a time
     public void jumpToTime(long targetEpoch) {
+        if (!isValidTime(targetEpoch)) {
+            String errorMsg = "{\"type\": \"ERROR\", \"message\": \"Time " + targetEpoch + " is out of bounds!\"}";
+            webSocketHandler.broadcastFlight(errorMsg);
+            System.out.println("Invalid scrub attempted: " + targetEpoch);
+            return;
+        }
+
         this.currentPlaybackTime = targetEpoch;
-        System.out.println("Scrubbed to: " + targetEpoch);
-        // call tick here to immediately update the view after scrubbing
-        tick();
-
-        System.out.println("Seeked to: " + currentPlaybackTime);
-    }
-    public void seek(int secondsOffset) {
-        this.currentPlaybackTime += secondsOffset; // Handles -10 or +10
-        System.out.println("Seeked to: " + currentPlaybackTime);
+        tick(); // Immediate update for valid time
     }
 
-    public void setPaused(boolean paused) {
-        this.isPaused = paused;
+
+    // pause
+    public void setPaused() {
+        this.isPaused = true;
+    }
+    // resume
+    public void setResume() {
+        this.isPaused = false;
     }
 
-    public TreeMap<Long, List<HistoricalFlightObject>> getFlightMap() {
-        return this.flightMap;
-    }
 }

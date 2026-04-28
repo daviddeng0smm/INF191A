@@ -73,11 +73,23 @@ public class FlightWebSocketHandler extends TextWebSocketHandler {
                 long end = json.get("endTime").asLong();
                 playbackManager.clearData();
                 historicalFirehoseIngestor.StartHistoricalStreamer(identifiers, start, end)
-                        .thenAccept(success -> playbackManager.setPaused(false));
+                        .thenAccept(success -> playbackManager.setResume());
                 break;
             case "SEEK":
                 long targetTime = json.get("targetTime").asLong();
                 playbackManager.jumpToTime(targetTime);
+                break;
+            case "PAUSE":
+                liveStreamer.stop();
+                playbackManager.setPaused();
+                break;
+            case "RESUME":
+                playbackManager.setResume();
+            case "FAST_FORWARD_10SECONDS":
+                playbackManager.jumpToTime(playbackManager.getCurrentPlaybackTime() + 10000);
+                break;
+            case "REWIND_10SECONDS":
+                playbackManager.jumpToTime(playbackManager.getCurrentPlaybackTime() - 10000);
                 break;
         }
     }
