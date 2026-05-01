@@ -23,6 +23,7 @@ public record HistoricalFlightObject(
         String dest,    // Destination Airport
         String aircrafttype, // e.g., B738
         String status,  // S, F, A, Z, or X
+        String squawk,
 
         // Runway Info (Great for VR replays!)
         String actual_runway_off,

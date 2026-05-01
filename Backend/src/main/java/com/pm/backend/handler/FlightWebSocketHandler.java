@@ -80,7 +80,6 @@ public class FlightWebSocketHandler extends TextWebSocketHandler {
                 playbackManager.jumpToTime(targetTime);
                 break;
             case "PAUSE":
-                liveStreamer.stop();
                 playbackManager.setPaused();
                 break;
             case "RESUME":

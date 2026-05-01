@@ -57,13 +57,18 @@ public class PlaybackManager {
             Map.Entry<Long, HistoricalFlightObject> p2Entry = timeline.higherEntry(currentPlaybackTime);
             HistoricalFlightObject p1 = p1Entry.getValue();
 
+            if (p1Entry.getKey() == currentPlaybackTime) {
+                webSocketHandler.broadcastFlight(p1);
+                continue;
+            }
+
+
             if (p2Entry != null) {
                 HistoricalFlightObject p2 = p2Entry.getValue();
                 double timeGap = (double)(p2.clock() - p1.clock());
                 double elapsed = (double)(currentPlaybackTime - p1.clock());
                 double ratio = timeGap > 0 ? elapsed / timeGap : 0.0;
 
-                // DON'T serialize to string here. Send the object directly.
                 HistoricalFlightObject ghost = interpolate(p1, p2, ratio);
                 webSocketHandler.broadcastFlight(ghost);
             } else {
@@ -87,13 +92,14 @@ public class PlaybackManager {
                 currentPlaybackTime,     // 4
                 newLat,                  // 5
                 newLon,                  // 6
-                newAlt,                  // 7
+                32000,                  // 7
                 p1.groundspeed(),        // 8
                 p1.heading(),            // 9
                 p1.orig(),               // 10
                 p1.dest(),               // 11
                 p1.aircrafttype(),       // 12
                 p1.status(),             // 13
+                p1.squawk(),
                 p1.actual_runway_off(),  // 14
                 p1.actual_runway_on()    // 15
         );
