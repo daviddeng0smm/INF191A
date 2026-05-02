@@ -22,7 +22,12 @@ public class PlaybackManager {
     private final Set<String> knownIdents = ConcurrentHashMap.newKeySet();
 
     @Getter
-    private long currentPlaybackTime = 0;
+    public long currentPlaybackTime = 0;
+
+    @Getter
+    private double timeMultiplier = 1;
+
+    @Getter
     private boolean isPaused = true;
 
     @Lazy
@@ -75,8 +80,7 @@ public class PlaybackManager {
                 webSocketHandler.broadcastFlight(p1);
             }
         }
-        currentPlaybackTime++;
-    }
+        currentPlaybackTime += timeMultiplier;    }
 
 
     private HistoricalFlightObject interpolate(HistoricalFlightObject p1, HistoricalFlightObject p2, double ratio) {
@@ -147,4 +151,8 @@ public class PlaybackManager {
         this.isPaused = false;
     }
 
+    //playback speed
+    public void setSpeed(double speed) {
+        this.timeMultiplier = speed;
+    }
 }

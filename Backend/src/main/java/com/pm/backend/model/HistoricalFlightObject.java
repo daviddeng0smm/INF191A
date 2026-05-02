@@ -9,7 +9,7 @@ public record HistoricalFlightObject(
         String id,      // Unique FlightAware ID
         String ident,   // Callsign (e.g., SWA123)
         String type,    // Message type (position or flifo)
-        long clock,     // The UTC/Zulu timestamp
+        long clock,
 
         // Movement Data (Position)
         double lat,

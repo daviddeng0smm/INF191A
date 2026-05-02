@@ -86,21 +86,18 @@ public class HistoricalFirehoseIngestor {
 //                            StandardOpenOption.APPEND);
 
 //                    System.out.println("Saved message to file: " + filepath);
-
-
                 } catch (Exception e) {
                     System.out.println("Skipping non-JSON message: " + rawJsonLine);
                 }
             }
-
             // Clean up resources if the stream ends
             socket.close();
             System.out.println("Historical stream ended gracefully.");
 
         } catch (Exception e) {
             System.err.println("Connection dropped or failed: " + e.getMessage());
+
         }
         return CompletableFuture.completedFuture(true);
     }
-
 }

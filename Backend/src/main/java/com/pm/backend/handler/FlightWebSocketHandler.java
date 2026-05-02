@@ -84,11 +84,15 @@ public class FlightWebSocketHandler extends TextWebSocketHandler {
                 break;
             case "RESUME":
                 playbackManager.setResume();
+                break;
             case "FAST_FORWARD_10SECONDS":
                 playbackManager.jumpToTime(playbackManager.getCurrentPlaybackTime() + 10000);
                 break;
             case "REWIND_10SECONDS":
                 playbackManager.jumpToTime(playbackManager.getCurrentPlaybackTime() - 10000);
+                break;
+            case "Speed_up":
+                playbackManager.setSpeed(json.get("speed").asDouble());
                 break;
         }
     }
@@ -105,6 +109,7 @@ public class FlightWebSocketHandler extends TextWebSocketHandler {
             }
         }
     }
+
     public void broadcastFlight(HistoricalFlightObject flightData) {
         try {
             // Convert the object to string and call Version A
