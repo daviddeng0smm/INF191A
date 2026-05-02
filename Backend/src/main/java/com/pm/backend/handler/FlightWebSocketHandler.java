@@ -99,7 +99,6 @@ public class FlightWebSocketHandler extends TextWebSocketHandler {
 
     public void broadcastFlight(String jsonFlightData) {
         for (WebSocketSession session : sessions) {
-            logToFile(jsonFlightData);
             if (session.isOpen()) {
                 try {
                     session.sendMessage(new TextMessage(jsonFlightData));
