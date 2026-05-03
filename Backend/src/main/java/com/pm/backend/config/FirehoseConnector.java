@@ -10,7 +10,7 @@ import java.io.IOException;
 @Component
 public class FirehoseConnector {
 
-    // This method is the exact equivalent of your Python connect_to_fire_hose() function!
+
     public SSLSocket createSecureConnection() throws IOException {
         System.out.println("Building secure TCP tunnel to FlightAware...");
 

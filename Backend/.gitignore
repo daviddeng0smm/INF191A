@@ -34,3 +34,7 @@ build/
 
 # Ignore sensitive credentials
 src/main/resources/application.properties
+
+# Postman collection
+postman_collection.json
+.env

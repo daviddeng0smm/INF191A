@@ -7,13 +7,11 @@ import com.pm.backend.model.FlightPosition;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-
 import javax.net.ssl.SSLSocket;
 import java.io.BufferedReader;
-import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
-import java.util.TreeMap;
+
 
 
 @Service
@@ -28,16 +26,22 @@ public class LiveStreamer {
     private final ObjectMapper objectMapper;
     private final FirehoseConnector firehoseConnector;
     private final FlightWebSocketHandler webSocketHandler;
-    public static TreeMap<Integer, FlightPosition[] >a;
+    private boolean isRunning = false;
 
-    // Spring Boot automatically injects both tools now
-    public LiveStreamer(FirehoseConnector firehoseConnector, FlightWebSocketHandler webSocketHandler) {
+
+    public LiveStreamer(FirehoseConnector firehoseConnector,
+                        FlightWebSocketHandler webSocketHandler,
+                        ObjectMapper objectMapper) {
         this.firehoseConnector = firehoseConnector;
         this.webSocketHandler = webSocketHandler;
-        this.objectMapper = new ObjectMapper();
+        this.objectMapper = objectMapper;
     }
+
+    public void stop() { this.isRunning = false; }
+
     @Async
     public void startLiveStreaming(String airportCode) {
+        this.isRunning = true;
         try {
             SSLSocket socket = firehoseConnector.createSecureConnection();
             PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
@@ -55,7 +59,7 @@ public class LiveStreamer {
             double minLon = -120.5;
             double maxLon = -114.5;
 
-            while ((rawJsonLine = in.readLine()) != null) {
+            while (isRunning && (rawJsonLine = in.readLine()) != null){
                 try {
                     FlightPosition flight = objectMapper.readValue(rawJsonLine, FlightPosition.class);
                     System.out.println("Waiting for a nearby plane");

@@ -9,7 +9,7 @@ public record HistoricalFlightObject(
         String id,      // Unique FlightAware ID
         String ident,   // Callsign (e.g., SWA123)
         String type,    // Message type (position or flifo)
-        long clock,     // The UTC/Zulu timestamp
+        long clock,
 
         // Movement Data (Position)
         double lat,
@@ -23,6 +23,7 @@ public record HistoricalFlightObject(
         String dest,    // Destination Airport
         String aircrafttype, // e.g., B738
         String status,  // S, F, A, Z, or X
+        String squawk,
 
         // Runway Info (Great for VR replays!)
         String actual_runway_off,
