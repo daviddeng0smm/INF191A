@@ -96,16 +96,16 @@ public class PlaybackManager {
                 currentPlaybackTime,     // 4
                 newLat,                  // 5
                 newLon,                  // 6
-                32000,                  // 7
+                newAlt,                  // 7
                 p1.groundspeed(),        // 8
                 p1.heading(),            // 9
                 p1.orig(),               // 10
                 p1.dest(),               // 11
                 p1.aircrafttype(),       // 12
                 p1.status(),             // 13
-                p1.squawk(),
-                p1.actual_runway_off(),  // 14
-                p1.actual_runway_on()    // 15
+                p1.squawk(),            // 14
+                p1.actual_runway_off(),  // 16
+                p1.actual_runway_on()    // 16
         );
     }
 
