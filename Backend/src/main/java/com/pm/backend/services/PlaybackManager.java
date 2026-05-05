@@ -36,10 +36,17 @@ public class PlaybackManager {
         this.objectMapper = objectMapper;
     }
 
+    long earliestTime = Long.MAX_VALUE;
+    long latestTime = Long.MIN_VALUE;
+
     public void addFlightData(HistoricalFlightObject flight) {
         identTimelines
                 .computeIfAbsent(flight.ident(), k -> new TreeMap<>())
                 .put(flight.clock(), flight);
+
+        // Dynamic Bound Tracking
+        this.earliestTime = Math.min(this.earliestTime, flight.clock());
+        this.latestTime = Math.max(this.latestTime, flight.clock());
 
         if (currentPlaybackTime == 0 || flight.clock() < currentPlaybackTime) {
             currentPlaybackTime = flight.clock();
@@ -96,35 +103,23 @@ public class PlaybackManager {
                 currentPlaybackTime,     // 4
                 newLat,                  // 5
                 newLon,                  // 6
-                32000,                  // 7
+                newAlt,                  // 7
                 p1.groundspeed(),        // 8
                 p1.heading(),            // 9
                 p1.orig(),               // 10
                 p1.dest(),               // 11
                 p1.aircrafttype(),       // 12
                 p1.status(),             // 13
-                p1.squawk(),
-                p1.actual_runway_off(),  // 14
-                p1.actual_runway_on()    // 15
+                p1.squawk(),             // 14
+                p1.actual_runway_off(),  // 15
+                p1.actual_runway_on()    // 16
         );
     }
-
 
     // --- Control methods for playback ---
     //check if time is valid
     boolean isValidTime(long targetEpochTime) {
         if (identTimelines.isEmpty()) return false;
-
-        long earliestTime = Long.MAX_VALUE;
-        long latestTime = Long.MIN_VALUE;
-
-        // Calculate the total range across all planes
-        for (TreeMap<Long, HistoricalFlightObject> timeline : identTimelines.values()) {
-            if (!timeline.isEmpty()) {
-                earliestTime = Math.min(earliestTime, timeline.firstKey());
-                latestTime = Math.max(latestTime, timeline.lastKey());
-            }
-        }
         return targetEpochTime >= earliestTime && targetEpochTime <= latestTime;
     }
 
@@ -136,7 +131,6 @@ public class PlaybackManager {
             System.out.println("Invalid scrub attempted: " + targetEpoch);
             return;
         }
-
         this.currentPlaybackTime = targetEpoch;
         tick(); // Immediate update for valid time
     }

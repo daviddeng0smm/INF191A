@@ -86,10 +86,10 @@ public class FlightWebSocketHandler extends TextWebSocketHandler {
                 playbackManager.setResume();
                 break;
             case "FAST_FORWARD_10SECONDS":
-                playbackManager.jumpToTime(playbackManager.getCurrentPlaybackTime() + 10000);
+                playbackManager.jumpToTime(playbackManager.getCurrentPlaybackTime() + 10);
                 break;
             case "REWIND_10SECONDS":
-                playbackManager.jumpToTime(playbackManager.getCurrentPlaybackTime() - 10000);
+                playbackManager.jumpToTime(playbackManager.getCurrentPlaybackTime() - 10);
                 break;
             case "Speed_up":
                 playbackManager.setSpeed(json.get("speed").asDouble());
