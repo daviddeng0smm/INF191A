@@ -54,16 +54,10 @@ public class HistoricalFirehoseIngestor {
 
             System.out.println("Authenticating and requesting historical data for: " + filteredList);
 
-            // 3. FIX: Added 'username' to the format parameters so 'apikey' doesn't take its place
             String initCommand = String.format(
                     "range %d %d username %s password %s events \"position \" idents \"%s\"",
                     epochStartTime, epochEndTime, username, apikey, filteredList
             );
-            // This will return ANY United or Delta flight in the air during that window
-//            String initCommand = String.format(
-//                    "range %d %d username %s password %s events \"position\" idents \"UAL* DAL*\"",
-//                    epochStartTime, epochEndTime, username, apikey
-//            );
 
             out.println(initCommand); // Send the "Hello" command
 

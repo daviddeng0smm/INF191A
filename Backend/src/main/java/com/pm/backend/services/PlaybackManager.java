@@ -106,13 +106,14 @@ public class PlaybackManager {
                 newAlt,                  // 7
                 p1.groundspeed(),        // 8
                 p1.heading(),            // 9
-                p1.orig(),               // 10
-                p1.dest(),               // 11
-                p1.aircrafttype(),       // 12
-                p1.status(),             // 13
-                p1.squawk(),             // 14
-                p1.actual_runway_off(),  // 15
-                p1.actual_runway_on()    // 16
+                p1.gs(),                 // 10
+                p1.orig(),               // 11
+                p1.dest(),               // 12
+                p1.aircrafttype(),       // 13
+                p1.status(),             // 14
+                p1.squawk(),             // 15
+                p1.actual_runway_off(),  // 16
+                p1.actual_runway_on()    // 17
         );
     }
 
@@ -128,11 +129,18 @@ public class PlaybackManager {
         if (!isValidTime(targetEpoch)) {
             String errorMsg = "{\"type\": \"ERROR\", \"message\": \"Time " + targetEpoch + " is out of bounds!\"}";
             webSocketHandler.broadcastFlight(errorMsg);
-            System.out.println("Invalid scrub attempted: " + targetEpoch);
             return;
         }
+
+        // save the current pause state
+        boolean wasPaused = this.isPaused;
+        // set the new time
         this.currentPlaybackTime = targetEpoch;
-        tick(); // Immediate update for valid time
+        //  unpause so tick can bypass its own check
+        this.isPaused = false;
+        tick();
+        // restore the previous pause state
+        this.isPaused = wasPaused;
     }
 
 

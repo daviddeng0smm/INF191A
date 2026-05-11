@@ -17,6 +17,7 @@ public record HistoricalFlightObject(
         double alt,
         double groundspeed,
         double heading,
+        double gs,
 
         // Flight Context (Flifo)
         String orig,    // Origin Airport
@@ -24,7 +25,6 @@ public record HistoricalFlightObject(
         String aircrafttype, // e.g., B738
         String status,  // S, F, A, Z, or X
         String squawk,
-
         // Runway Info (Great for VR replays!)
         String actual_runway_off,
         String actual_runway_on
