@@ -1,8 +1,11 @@
 package com.pm.backend.services;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pm.backend.handler.FlightWebSocketHandler;
 import com.pm.backend.model.HistoricalFlightObject;
+import com.pm.backend.model.TrailMessage;
+import com.pm.backend.model.TrailPoint;
 import lombok.Getter;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -53,9 +56,22 @@ public class PlaybackManager {
         }
     }
 
+    public void broadcastTrails() throws JsonProcessingException {
+        for (Map.Entry<String, TreeMap<Long, HistoricalFlightObject>> e : identTimelines.entrySet()) {
+            List<TrailPoint> points = e.getValue().values().stream()
+                    .map(f -> new TrailPoint(f.clock(), f.lat(), f.lon(), f.alt(), f.heading()))
+                    .toList();
+            TrailMessage msg = new TrailMessage("TRAIL", e.getKey(), points);
+            webSocketHandler.broadcastFlight(objectMapper.writeValueAsString(msg));
+        }
+    }
+
     public void clearData(){
         this.identTimelines.clear();
     }
+
+
+
 
     @Scheduled(fixedRate = 1000)
     public void tick() {

@@ -1,5 +1,6 @@
 package com.pm.backend.handler;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.pm.backend.model.HistoricalFlightObject;
@@ -68,12 +69,19 @@ public class FlightWebSocketHandler extends TextWebSocketHandler {
                 break;
             case "START_HISTORICAL":
                 liveStreamer.stop();
-                String [] identifiers = json.get("identifiers").asText().split(",");
+                String[] identifiers = json.get("identifiers").asText().split(",");
                 long start = json.get("startTime").asLong();
-                long end = json.get("endTime").asLong();
+                long end   = json.get("endTime").asLong();
                 playbackManager.clearData();
                 historicalFirehoseIngestor.StartHistoricalStreamer(identifiers, start, end)
-                        .thenAccept(success -> playbackManager.setResume());
+                        .thenAccept(success -> {
+                            try {
+                                playbackManager.broadcastTrails();
+                            } catch (JsonProcessingException e) {
+                                throw new RuntimeException(e);
+                            }
+                            playbackManager.setResume();
+                        });
                 break;
             case "SEEK":
                 long targetTime = json.get("targetTime").asLong();
@@ -118,6 +126,7 @@ public class FlightWebSocketHandler extends TextWebSocketHandler {
             System.err.println("Error serializing historical flight: " + e.getMessage());
         }
     }
+
 
     private void logToFile(String data) {
         try {
